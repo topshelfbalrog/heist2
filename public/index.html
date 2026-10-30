@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>In Broad Daylight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Limelight&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/style.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<!-- Title -->
+<section id="title" class="screen show">
+  <div class="marquee">
+    <div class="bulbs" aria-hidden="true"></div>
+    <p class="presents">Stanley's Palace presents</p>
+    <h1>In Broad Daylight</h1>
+    <p class="sub">A co-op heist for three or four</p>
+  </div>
+  <div class="title-form">
+    <label class="field-label" for="nameInput">Your name</label>
+    <input id="nameInput" maxlength="18" autocomplete="off" placeholder="What does the crew call you?">
+    <button id="btnCreate" class="btn primary">Start a crew room</button>
+    <div class="join">
+      <input id="codeInput" maxlength="4" autocomplete="off" placeholder="Room code">
+      <button id="btnJoin" class="btn">Join a crew</button>
+    </div>
+    <button id="btnSolo" class="btn ghost">Solo practice</button>
+    <p class="preview-note">This is a preview without the game server, so crew rooms and voice are off. Solo practice runs the whole heist in your browser, and you can swap into the van with F1.</p>
+    <p class="fine">Built for keyboard, mouse and a headset. In-game voice asks for your microphone when the heist starts.</p>
+  </div>
+</section>
+
+<!-- Lobby -->
+<section id="lobby" class="screen">
+  <header class="lobby-head">
+    <div class="room">
+      <span>Room</span><b id="roomCode">----</b>
+      <button id="btnCopy" class="btn tiny">Copy invite link</button>
+    </div>
+    <div id="crewBox"></div>
+  </header>
+  <div class="lobby-main">
+    <div id="cards" class="cards"></div>
+    <aside class="lobby-side">
+      <h3>The crew</h3>
+      <ul id="playerList"></ul>
+      <div id="hostControls">
+        <button id="btnRandom" class="btn">Deal roles at random</button>
+        <label class="toggle" id="practiceRow"><input type="checkbox" id="practiceToggle"> Practice run (any crew size)</label>
+        <div class="crew-login">
+          <input id="crewName" maxlength="24" placeholder="Crew name">
+          <input id="crewPass" type="password" maxlength="40" placeholder="Passcode">
+          <button id="btnCrew" class="btn tiny">Save progress as this crew</button>
+        </div>
+        <button id="btnStart" class="btn primary big">Start the heist</button>
+        <div id="startHint" class="fine"></div>
+      </div>
+      <div id="waitHost" class="fine">Waiting for the host to start the heist.</div>
+      <div class="mic-row"><button id="btnMic" class="btn tiny">Test my mic</button></div>
+      <button id="btnLeave" class="btn ghost tiny">Leave room</button>
+    </aside>
+  </div>
+</section>
+
+<!-- Briefing -->
+<section id="briefing" class="screen">
+  <div class="brief-text"><div id="briefLine1"></div><div id="briefLine2"></div></div>
+  <div class="skip">Click or press Space to skip</div>
+</section>
+
+<!-- In-game HUD -->
+<div id="hud">
+  <div id="crosshair"></div>
+  <div id="hitmarker"></div>
+  <div id="prompt"><span id="promptKey">E</span><span id="promptText"></span><i id="promptRing"></i></div>
+  <div id="topbar">
+    <div id="heat"><span>Heat</span><div class="bar"><i id="heatFill"></i></div></div>
+    <div id="lockdown"></div>
+  </div>
+  <div id="objective"></div>
+  <div id="rolebox">
+    <div id="roleName"></div>
+    <div class="abil"><span id="abilityName"></span><b id="abilityCd"></b></div>
+    <div id="hp"></div>
+    <div class="items"><span id="itemKeycard">Keycard</span><span id="itemOverride">Override key</span><span id="itemPrize">Carrying the score</span><span id="blendInd">Blending in</span></div>
+  </div>
+  <div id="ammo"><div id="ammoName"></div><div id="ammoCount"></div></div>
+  <div id="comms">
+    <span id="radioInd">Radio (V)</span><span id="whisperInd">Whisper (X)</span><span id="muteInd">Mic muted (T)</span><span id="jamInd">Jammed: no radio</span>
+    <div id="speakers"></div>
+  </div>
+  <div id="toasts"></div>
+  <div id="breakerNotes"></div>
+  <div id="protocolBanner"><b>Stanley Protocol</b><small></small></div>
+  <div id="rideOverlay"></div>
+  <div id="markers"></div>
+  <div id="madeBanner"></div>
+  <div id="downOverlay"><h2 id="downTitle">You're down</h2><p id="downText">A teammate has to reach you and hold E. You can still talk on the radio.</p></div>
+  <div id="bloodFlash"></div>
+  <div id="ventOverlay"><div class="duct"></div><p>Crawling through the vent</p></div>
+  <div id="hitFlash"></div>
+</div>
+
+<!-- Getaway -->
+<div id="getawayHud">
+  <div class="gw-top"><span>Safehouse in <b id="gwTime">3:30</b></span><span>Van <b id="gwDamage"></b></span><span id="gwSpeed">0 km/h</span><span>Heading <b id="gwCompass">N</b></span></div>
+  <div id="gwRole"></div>
+</div>
+<div id="scanner"><div class="scanner-head">Police scanner. Red bars are roadblocks. Flashing dots are cruisers. Get the yellow arrow to the safehouse.</div><canvas id="scannerCanvas"></canvas></div>
+
+<!-- Overwatch HUD -->
+<div id="owhud">
+  <div id="owTop">
+    <div class="ow-chip">Intel <b id="owIntelVal">0</b></div>
+    <div class="ow-chip">Strikes left <b id="owStrikesVal">2</b></div>
+    <div class="ow-chip tool">Seal (Q) <b id="owSealVal">ready</b></div>
+    <div class="ow-chip tool">Cut (C) <b id="owCutVal">ready</b></div>
+  </div>
+  <div id="owSusp"></div>
+  <div id="owRadio"><h4>Security radio <span>Flag chatter that warns of trouble for +1 Intel</span></h4><div id="owRadioLog"></div></div>
+  <div id="owHelp"><kbd>1-6</kbd> zoom a feed <kbd>M</kbd> map and Strikes <kbd>B</kbd> manuals <kbd>G</kbd> guards <kbd>O</kbd> override console <kbd>Q</kbd> seal a door <kbd>C</kbd> cut power <kbd>V</kbd> radio</div>
+  <div id="owHover"></div>
+  <div id="owZoom">
+    <div id="owZoomFrame"><div id="owZoomTags"></div></div>
+    <div class="zoom-bar">
+      <button id="zPrev" class="btn tiny">Previous camera</button>
+      <span id="owZoomLabel"></span>
+      <button id="zNext" class="btn tiny">Next camera</button>
+      <span id="owZoomStatus"></span>
+      <span class="fine">Click a guard to tag them. Tab or Esc returns to the van.</span>
+    </div>
+  </div>
+  <div id="owMap" class="ow-modal">
+    <div class="ow-modal-box map">
+      <div class="ow-modal-head">
+        <h3>Tactical map</h3>
+        <div id="owFloorTabs"></div>
+        <div id="owTools"><button data-tool="seal">Seal a door <kbd>Q</kbd></button><button data-tool="cut">Cut power <kbd>C</kbd></button></div>
+        <div id="owStrikes"><button data-kind="siren">Jackpot Siren</button><button data-kind="lights">Kill the Lights</button><button data-kind="override">Override</button></div>
+        <button class="close btn tiny">Close (M)</button>
+      </div>
+      <canvas id="owMapCanvas"></canvas>
+      <div id="owMapHint"></div>
+    </div>
+  </div>
+  <div id="owManual" class="ow-modal">
+    <div class="ow-modal-box manual">
+      <div class="ow-modal-head"><h3>Manuals</h3><button class="close btn tiny">Close (B)</button></div>
+      <div id="owManualBody"></div>
+    </div>
+  </div>
+  <div id="owConsole" class="ow-modal">
+    <div class="ow-modal-box console">
+      <div class="ow-modal-head"><h3>Lockdown override</h3><button class="close btn tiny">Close (O)</button></div>
+      <div id="owConsoleBody"></div>
+    </div>
+  </div>
+  <div id="owRoster" class="ow-modal">
+    <div class="ow-modal-box">
+      <div class="ow-modal-head"><h3>Guard roster</h3><button class="close btn tiny">Close (G)</button></div>
+      <p class="fine">Read the Face a dossier before a Con. One line in three fits each person.</p>
+      <div id="owRosterBody"></div>
+    </div>
+  </div>
+</div>
+
+<div id="panel"></div>
+
+<!-- Pause -->
+<section id="pause" class="screen overlay">
+  <div class="pause-box">
+    <h2>Paused</h2>
+    <p class="fine">The heist keeps running. Your crew can still see you.</p>
+    <label>Mouse sensitivity <input id="sensRange" type="range" min="6" max="60"></label>
+    <label>Volume <input id="volRange" type="range" min="0" max="100"></label>
+    <label>Music <input id="musicRange" type="range" min="0" max="100"></label>
+    <label>Graphics
+      <select id="qualSel"><option value="high">High (bloom, sharp)</option><option value="medium">Medium</option><option value="low">Low (fastest)</option></select>
+    </label>
+    <div class="keys">
+      <span><kbd>V</kbd> hold for radio</span><span><kbd>X</kbd> hold to whisper</span><span><kbd>T</kbd> mute mic</span><span><kbd>F1</kbd> swap to van (practice)</span>
+    </div>
+    <button id="btnResume" class="btn primary">Back to the job</button>
+    <button id="practiceSwap" class="btn">Swap field / van (practice)</button>
+    <button id="btnAbort" class="btn">Call off the job (host)</button>
+    <button id="btnQuit" class="btn ghost">Leave the heist</button>
+  </div>
+</section>
+
+<!-- Results -->
+<section id="results" class="screen">
+  <div class="results-box">
+    <h1 id="resTitle"></h1>
+    <p id="resReason"></p>
+    <div class="payout"><span>Crew payout</span><b id="resPayout"></b></div>
+    <div id="resMeta"></div>
+    <table id="resStats"></table>
+    <p id="resCrew"></p>
+    <div class="res-btns">
+      <button id="btnAgain" class="btn primary">Back to the lobby</button>
+      <span id="resWait" class="fine">Waiting for the host.</span>
+      <button id="btnResLeave" class="btn ghost">Leave</button>
+    </div>
+  </div>
+</section>
+
+<div id="clickToPlay">Click to jump back in</div>
+<div id="err" role="alert"></div>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
