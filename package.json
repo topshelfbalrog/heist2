@@ -1,0 +1,15 @@
+{
+  "name": "in-broad-daylight",
+  "version": "0.1.0",
+  "description": "In Broad Daylight - a co-op browser heist game",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "three": "0.170.0",
+    "ws": "^8.18.0"
+  }
+}
